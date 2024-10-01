@@ -9,6 +9,8 @@ public enum EFirePiranhaState : byte
     Hiding,
     AnimatingUp,
     Active,
+    FiringDelay,
+    Firing,
     AnimatingDown
 }
 
@@ -21,12 +23,16 @@ public class FirePiranha : Enemy
     private Vector2 activeLocation = Vector2.zero;
     private float holdTimer = 0.0f;
     private float animationTimer = 0.0f;
+    private bool mouthOpen = false;
 
     public EFirePiranhaState State
     {
         get { return state; }
     }
 
+    public GameObject fireballPrefab;
+    
+    private Vector2 shootingDirection;
     // Start is called before the first frame update
     void Start()
     {
@@ -59,7 +65,7 @@ public class FirePiranha : Enemy
         else if (state == EFirePiranhaState.AnimatingUp)
         {
             Vector2 marioLocation = Game.Instance.MarioGameObject.transform.position;
-            SetLookDirection(marioLocation);
+            SetLookDirection(marioLocation, mouthOpen = false);
             animationTimer -= Time.deltaTime * Game.Instance.LocalTimeScale;
 
             float pct = 1.0f - (animationTimer / EnemyConstants.PiranhaPlantAnimationDuration);
@@ -77,20 +83,20 @@ public class FirePiranha : Enemy
         {
             //Make piranha look in the direction of mario
             Vector2 marioLocation = Game.Instance.MarioGameObject.transform.position;
-            SetLookDirection(marioLocation);
+            SetLookDirection(marioLocation, mouthOpen = false);
 
             holdTimer -= Time.deltaTime * Game.Instance.LocalTimeScale;
 
             if (holdTimer <= 0.0f)
             {
                 holdTimer = 0.0f;
-                SetState(EFirePiranhaState.AnimatingDown);
+                SetState(EFirePiranhaState.FiringDelay);
             }
         }
         else if (state == EFirePiranhaState.AnimatingDown)
         {
             Vector2 marioLocation = Game.Instance.MarioGameObject.transform.position;
-            SetLookDirection(marioLocation);
+            SetLookDirection(marioLocation, mouthOpen = false);
             animationTimer -= Time.deltaTime * Game.Instance.LocalTimeScale;
 
             float pct = 1.0f - (animationTimer / EnemyConstants.PiranhaPlantAnimationDuration);
@@ -103,6 +109,23 @@ public class FirePiranha : Enemy
                 animationTimer = 0.0f;
                 SetState(EFirePiranhaState.Hiding);
             }
+        }
+        else if (state == EFirePiranhaState.FiringDelay)
+        {
+            //Make piranha look in the direction of mario
+            Vector2 marioLocation = Game.Instance.MarioGameObject.transform.position;
+            SetLookDirection(marioLocation, mouthOpen = true);
+            holdTimer -= Time.deltaTime * Game.Instance.LocalTimeScale;
+            if (holdTimer <= 0.0f)
+            {
+                SetState(EFirePiranhaState.Firing);
+            }
+        }
+        else if (state == EFirePiranhaState.Firing)
+        {
+            //Shoot a fireball
+            ShootFireball();
+            SetState(EFirePiranhaState.AnimatingDown);
         }
     }
 
@@ -141,36 +164,56 @@ public class FirePiranha : Enemy
             {
                 animationTimer = EnemyConstants.PiranhaPlantAnimationDuration;
             }
+            else if (state == EFirePiranhaState.FiringDelay)
+            {
+                holdTimer = 0.5f;
+            }
         }
     }
 
-    private void SetLookDirection(Vector2 MarioLocation)
+    private void SetLookDirection(Vector2 MarioLocation, bool mouthOpen)
     {
-        if (MarioLocation.x < activeLocation.x && MarioLocation.y < activeLocation.y + 2.0f)
+        Vector3 scale = transform.localScale;
+        if (MarioLocation.y < activeLocation.y + 2.0f)
         {
-            //Look BottomLeft
-            animator.Play("FirePiranhaDownClosed");
-            Vector3 scale = transform.localScale;
-            scale.x = 1.0f;
+            //Look Down
+            if (!mouthOpen)
+            {
+                animator.Play("FirePiranhaDownClosed");
+            }
+            else
+            {
+                animator.Play("FirePiranhaDownOpen");
+            }
+            
+            if (MarioLocation.x < activeLocation.x) { scale.x = 1.0f; shootingDirection = new Vector2(-1, -1); } else { scale.x = -1.0f; shootingDirection = new Vector2(1, -1); }
             transform.localScale = scale;
         }
-        else if (MarioLocation.x > activeLocation.x && MarioLocation.y < activeLocation.y + 2.0f)
+        else
         {
-            //Look BottomRight
-            animator.Play("FirePiranhaDownClosed");
-            Vector3 scale = transform.localScale;
-            scale.x = -1.0f;
+            //Look Up
+            if (!mouthOpen)
+            {
+                animator.Play("FirePiranhaUpClosed");
+            }
+            else 
+            {
+                animator.Play("FirePiranhaUpOpen");
+            }
+
+            if (MarioLocation.x < activeLocation.x) { scale.x = 1.0f; shootingDirection = new Vector2(-1, 1); } else { scale.x = -1.0f; shootingDirection = new Vector2(1, 1); }
             transform.localScale = scale;
         }
-        else if (MarioLocation.x > activeLocation.x && MarioLocation.y > activeLocation.y + 2.0f)
-        {
-            //Look TopRight
-            animator.Play("FirePiranhaUpClosed");
-        }
-        else if (MarioLocation.x < activeLocation.x && MarioLocation.y > activeLocation.y + 2.0f)
-        {
-            //Look TopLeft
-            animator.Play("FirePiranhaUpClosed");
-        }
+    }
+
+    private void ShootFireball()
+    {
+        Vector2 marioLocation = Game.Instance.MarioGameObject.transform.position;
+
+        //Vector2 shootingDirection = new Vector2(-1, -1);
+        Vector2 shootingPosition = transform.position + new Vector3(0.0f, EnemyConstants.FirePiranhaOffsetY -0.6f, 0.0f);
+        GameObject fireball = Instantiate(fireballPrefab, shootingPosition, Quaternion.identity);
+        fireball.GetComponent<FireBall>().Initialize(shootingDirection);
+        Debug.Log("Fireball shot");
     }
 }

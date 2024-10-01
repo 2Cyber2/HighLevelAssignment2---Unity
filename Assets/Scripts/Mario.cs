@@ -228,6 +228,11 @@ public class Mario : MonoBehaviour
                     MarioHasDied(true);
                 }
             }
+            if (enemyType == EEnemyType.Fireball)
+            {
+                //FireBall fireBall = collider.gameObject.GetComponent<FireBall>();
+                MarioHasDied (true);
+            }
         }
     }
 
