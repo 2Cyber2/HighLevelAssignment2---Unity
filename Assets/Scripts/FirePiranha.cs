@@ -209,8 +209,6 @@ public class FirePiranha : Enemy
     private void ShootFireball()
     {
         Vector2 marioLocation = Game.Instance.MarioGameObject.transform.position;
-
-        //Vector2 shootingDirection = new Vector2(-1, -1);
         Vector2 shootingPosition = transform.position + new Vector3(0.0f, EnemyConstants.FirePiranhaOffsetY -0.6f, 0.0f);
         GameObject fireball = Instantiate(fireballPrefab, shootingPosition, Quaternion.identity);
         fireball.GetComponent<FireBall>().Initialize(shootingDirection);
